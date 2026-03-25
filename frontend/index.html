@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetCheck - Network Stability Monitor</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>🔗</text></svg>">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="bg-blobs"><span></span><span></span><span></span></div>
+    <div class="container">
+        <!-- Header with clock + dark mode toggle -->
+        <header>
+            <div class="header-left">
+                <h1>🔗 NetCheck</h1>
+                <p>Network Stability Monitor</p>
+            </div>
+            <div class="header-right">
+                <div id="clock" class="clock">--:--:--</div>
+                <button id="btnDarkMode" class="btn btn-icon" title="Toggle dark/light mode">🌙</button>
+            </div>
+        </header>
+
+        <!-- Controls -->
+        <section class="controls">
+            <div class="controls-group">
+                <button id="btnStart" class="btn btn-primary">▶ Start</button>
+                <button id="btnStop" class="btn btn-danger" disabled>⏸ Stop</button>
+                <button id="btnRestart" class="btn btn-secondary btn-small" disabled>↺ Restart</button>
+            </div>
+            <div class="status-display">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText" class="status-text">Ready</span>
+            </div>
+        </section>
+
+        <!-- Interval settings -->
+        <section class="interval-settings">
+            <div class="interval-group">
+                <label for="inputInterval" class="interval-label">Check interval</label>
+                <div class="interval-input-wrap">
+                    <input id="inputInterval" type="number" class="interval-input" min="5" max="300" value="10" step="5">
+                    <span class="interval-unit">s</span>
+                </div>
+            </div>
+            <div class="interval-group">
+                <label for="inputSpeedInterval" class="interval-label">Speed test interval</label>
+                <div class="interval-input-wrap">
+                    <input id="inputSpeedInterval" type="number" class="interval-input" min="60" max="3600" value="600" step="60">
+                    <span class="interval-unit">s</span>
+                </div>
+            </div>
+            <button id="btnApplyConfig" class="btn btn-secondary btn-small">✔ Apply</button>
+            <span class="interval-hint" id="configHint"></span>
+        </section>
+
+        <!-- Main stats cards -->
+        <section class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="statUptime">0%</div>
+                <div class="uptime-bar-track">
+                    <div class="uptime-bar-fill" id="uptimeBarFill" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Disconnections</div>
+                <div class="stat-value" id="statDisconnects">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Latency</div>
+                <div class="stat-value" id="statLatency">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Duration</div>
+                <div class="stat-value" id="statDuration">0m</div>
+            </div>
+        </section>
+
+        <!-- Dual ping cards (F4) + WiFi (F5) -->
+        <section class="ping-row">
+            <div class="ping-card" id="pingCard8888">
+                <div class="ping-host">8.8.8.8 (Google)</div>
+                <div class="ping-latency" id="pingLatency8888">—</div>
+                <div class="ping-loss" id="pingLoss8888">loss: —</div>
+                <div class="ping-indicator" id="pingInd8888"></div>
+            </div>
+            <div class="ping-card" id="pingCard1111">
+                <div class="ping-host">1.1.1.1 (Cloudflare)</div>
+                <div class="ping-latency" id="pingLatency1111">—</div>
+                <div class="ping-loss" id="pingLoss1111">loss: —</div>
+                <div class="ping-indicator" id="pingInd1111"></div>
+            </div>
+            <div class="wifi-card">
+                <div class="wifi-label">WiFi Signal</div>
+                <div class="wifi-value" id="wifiValue">—</div>
+                <div class="wifi-bar-track">
+                    <div class="wifi-bar-fill" id="wifiFill" style="width:0%"></div>
+                </div>
+                <div class="wifi-status" id="wifiStatus">N/A</div>
+            </div>
+        </section>
+
+        <!-- Charts section (F1, F2, F3) -->
+        <section class="charts-section">
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <div class="chart-title">Latency (ms)</div>
+                    <canvas id="latencyChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Packet Loss (%)</div>
+                    <canvas id="lossChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-box chart-box-speed">
+                <div class="chart-title">Speed Tests</div>
+                <canvas id="speedChart"></canvas>
+                <div class="speed-latest" id="speedLatest">No speed test data yet</div>
+            </div>
+        </section>
+
+        <!-- Connection Timeline -->
+        <section class="sparkline-section">
+            <h2>Connection Timeline</h2>
+            <div id="sparkline" class="sparkline"></div>
+        </section>
+
+        <!-- Alerts panel (B7) -->
+        <section class="alerts-section" id="alertsSection" style="display:none;">
+            <div class="alerts-header">
+                <h2>⚠ Alerts</h2>
+                <span class="alerts-count" id="alertsCount">0</span>
+            </div>
+            <div class="alerts-list" id="alertsList"></div>
+        </section>
+
+        <!-- Event Log -->
+        <section class="event-log">
+            <div class="event-log-header">
+                <h2>Event Log</h2>
+                <div class="log-controls">
+                    <!-- F8: filter bar -->
+                    <select id="filterType" class="filter-select">
+                        <option value="">All types</option>
+                        <option value="ping">Ping</option>
+                        <option value="dns">DNS</option>
+                        <option value="wifi">WiFi</option>
+                        <option value="speedtest">Speed</option>
+                        <option value="connection_change">Connection</option>
+                    </select>
+                    <select id="filterStatus" class="filter-select">
+                        <option value="">All statuses</option>
+                        <option value="success">Success</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                    <button id="btnExport" class="btn btn-secondary btn-small">📥 Export CSV</button>
+                    <button id="btnClear" class="btn btn-secondary btn-small">🗑 Clear</button>
+                </div>
+            </div>
+            <div id="eventTable" class="event-table">
+                <div class="empty-state">No events yet. Start monitoring to begin.</div>
+            </div>
+        </section>
+
+        <!-- Summary panel (F15) -->
+        <section class="summary-panel" id="summaryPanel">
+            <div class="summary-item">
+                <span class="summary-label">Total events</span>
+                <span class="summary-value" id="sumTotal">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Ping events</span>
+                <span class="summary-value" id="sumPing">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">DNS events</span>
+                <span class="summary-value" id="sumDns">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Speed tests</span>
+                <span class="summary-value" id="sumSpeed">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Alerts fired</span>
+                <span class="summary-value" id="sumAlerts">0</span>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast container (F12) -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
