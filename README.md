@@ -1,322 +1,212 @@
-# 🔗 NetCheck - Network Stability Monitor
+# NetCheck — Network Stability Monitor
 
-A simple, local web-based tool to monitor network connectivity and diagnose cable/connection issues over extended periods.
-
-## Features
-
-✅ **Real-time Monitoring**
-
-- Ping to multiple DNS servers (8.8.8.8, 1.1.1.1)
-- DNS resolution testing (google.com)
-- Packet loss measurement
-- WiFi signal strength (Windows/Linux/macOS)
-- Periodic speed tests (every 10 minutes)
-
-✅ **Web UI**
-
-- Real-time status dashboard
-- Live connection timeline (sparkline)
-- Event log with detailed history
-- Aggregated statistics (uptime %, disconnects, avg latency)
-
-✅ **Data Export**
-
-- CSV export for analysis
-- JSON logs saved locally
-- Full data control on your machine
-
-✅ **Privacy & Security**
-
-- 100% local operation (localhost:8000 only)
-- No data sent externally
-- No analytics or tracking
-- Open source code you can audit
+A lightweight, self-hosted tool for monitoring network connectivity over time. Runs a local web server, collects ping/DNS/WiFi/speed metrics every 10 seconds, streams results live to the browser, and saves everything to JSON logs on your machine.
 
 ---
 
-## Quick Start
+## Features
 
-### Prerequisites
+| Category | Details |
+|---|---|
+| **Diagnostics** | Ping (8.8.8.8, 1.1.1.1), DNS resolution, WiFi signal strength, download/upload speed |
+| **Alerting** | Configurable thresholds for high latency and packet loss |
+| **Live UI** | SSE-driven dashboard — no page refreshes; sparkline timeline; event log |
+| **Export** | One-click CSV export; raw JSON logs retained in `./logs/` |
+| **Privacy** | Fully local — `localhost:8000` only, zero external data transmission |
+| **Platform** | Windows · Linux · macOS |
+
+---
+
+## Requirements
 
 - Python 3.8+
-- Windows, Linux, or macOS
+- pip
 
-### Installation
+---
 
-1. **Clone or extract the project**
+## Installation
 
 ```bash
+git clone https://github.com/your-username/netcheck.git
 cd netcheck
-```
 
-1. **Create virtual environment** (recommended)
-
-```bash
-# Windows
+# Create and activate a virtual environment (recommended)
 python -m venv venv
+
+# Windows
 venv\Scripts\activate
-
-# Linux/macOS
-python3 -m venv venv
+# Linux / macOS
 source venv/bin/activate
-```
 
-1. **Install dependencies**
-
-```bash
 pip install -r requirements.txt
 ```
 
-### Running
+---
+
+## Running
 
 ```bash
-# Windows
-python run.py
-
-# Linux/macOS
-python3 run.py
+python run.py          # Windows
+python3 run.py         # Linux / macOS
 ```
 
-Then open your browser to: **<http://127.0.0.1:8000>**
+Open **http://127.0.0.1:8000** in your browser.
 
 ---
 
 ## Usage
 
-### Starting Monitoring
+1. Click **▶ Start Monitoring** — the status indicator turns green.
+2. Events appear in the log every ~10 seconds.
+3. Click **��� Export CSV** at any time to download a spreadsheet.
+4. Click **⏸ Stop Monitoring** to end the session — logs are saved automatically.
 
-1. Click **"▶ Start Monitoring"** button in the web UI
-2. The status indicator will turn **🟢 green** and show "Monitoring Active"
-3. Events will start appearing in the event log
+### Dashboard panels
 
-### What's Being Monitored
+| Panel | Description |
+|---|---|
+| **Status bar** | Online / Offline indicator with monitoring state |
+| **Stats cards** | Uptime %, disconnect count, average latency, session duration |
+| **Timeline** | Colour-coded sparkline — ��� connected · ��� disconnected |
+| **Event log** | Last 100 events with type, status, and metric details |
 
-- **PING**: Connection test to public DNS servers (8.8.8.8, 1.1.1.1)
-- **DNS**: Domain name resolution test (google.com)
-- **WiFi**: Signal strength and connection status
-- **SPEED**: Download/upload speed test (runs every 10 minutes, can be slow)
-- **CONN**: Connection state changes (online/offline transitions)
+### Event types
 
-### Viewing Results
-
-- **Real-time Dashboard**: Stats update every 2 seconds
-  - Uptime percentage
-  - Disconnect count
-  - Average latency
-  - Monitoring duration
-
-- **Event Timeline**: Visual sparkline showing connection state history
-  - 🟩 Green = Connected
-  - 🟥 Red = Disconnected
-
-- **Event Log**: Last 100 events with timestamps and details
-  - Type, status, and metrics for each event
-  - Scroll to see full history
-
-### Exporting Data
-
-1. Click **"📥 Export CSV"** to download events as spreadsheet
-2. File available for analysis in Excel, Python, etc.
-
-### Stopping Monitoring
-
-Click **"⏸ Stop Monitoring"** button
-
-- Logs are automatically saved to `./logs/` folder
-- Data persists for future reference
-
-### Clearing Logs
-
-Click **"🗑 Clear Logs"** to remove all events
-
-- ⚠️ This cannot be undone
-- Useful for starting fresh test session
+| Type | Interval | What it measures |
+|---|---|---|
+| `ping` | 10 s | Round-trip latency and packet loss to 8.8.8.8 / 1.1.1.1 |
+| `dns` | 10 s | Resolution time for `google.com` |
+| `wifi` | 10 s | Signal strength (dBm / %) and connection status |
+| `speedtest` | 10 min | Download and upload throughput |
+| `connection_change` | on change | Online ↔ Offline state transitions |
 
 ---
 
-## Project Structure
+## REST API
 
-```
-netcheck/
-├── backend/
-│   ├── app.py           # FastAPI server & endpoints
-│   ├── monitor.py       # Core monitoring logic
-│   ├── models.py        # Pydantic data models
-│   ├── utils.py         # Network diagnostic functions
-│   └── __init__.py      # Package marker
-├── frontend/
-│   ├── index.html       # Web UI
-│   ├── style.css        # Styling (dark theme)
-│   └── app.js           # JavaScript (EventSource SSE)
-├── logs/                # JSON/CSV logs (created on first run)
-├── run.py              # Entry point
-├── requirements.txt    # Python dependencies
-└── README.md           # This file
-```
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | Serve web UI |
+| `/api/start` | GET | Start monitoring |
+| `/api/stop` | GET | Stop monitoring |
+| `/api/status` | GET | Current running state |
+| `/api/history` | GET | Event list (`?limit=N`) |
+| `/api/stats` | GET | Aggregated statistics |
+| `/api/events` | GET | Server-Sent Events stream |
+| `/api/export` | POST | Download CSV or JSON |
+| `/api/logs` | DELETE | Clear all in-memory logs |
 
 ---
 
-## Logs & Data
+## Logs & data format
 
-### Storage
+Logs are written to `./logs/` as timestamped JSON files.
 
-- **JSON Logs**: `./logs/network_monitor_*.json`
-- **CSV Exports**: `./logs/network_monitor_*.csv`
-- All data stays on your machine
-
-### JSON Log Format
+### JSON event schema
 
 ```json
 {
   "event_type": "ping",
   "success": true,
+  "timestamp": "2026-03-25T10:15:30.123456",
   "details": {
     "host": "8.8.8.8",
-    "latency_ms": 25.5,
+    "latency_ms": 18.4,
     "packet_loss": 0.0
-  },
-  "timestamp": "2024-03-24T14:30:45.123456"
+  }
 }
 ```
 
-### CSV Export Format
+### CSV export columns
 
-| timestamp | event_type | success | detail_host | detail_latency_ms | detail_packet_loss |
-|-----------|-----------|---------|-------------|-------------------|-------------------|
-| 2024-03-24T14:30:45 | ping | True | 8.8.8.8 | 25.5 | 0.0 |
+```
+timestamp, event_type, success, detail_host, detail_latency_ms, detail_packet_loss
+```
+
+---
+
+## Project structure
+
+```
+netcheck/
+├── backend/
+│   ├── app.py        # FastAPI application & REST endpoints
+│   ├── monitor.py    # Monitoring loop, alerting, uptime tracking
+│   ├── models.py     # Pydantic data models
+│   └── utils.py      # ping, DNS, WiFi, speed-test helpers
+├── frontend/
+│   ├── index.html    # Dashboard markup
+│   ├── style.css     # Dark-theme stylesheet
+│   └── app.js        # SSE client, charts, UI logic
+├── logs/             # JSON session logs (auto-created)
+├── run.py            # Entry point (uvicorn launcher)
+└── requirements.txt  # Python dependencies
+```
+
+---
+
+## Tech stack
+
+| Component | Library | Version |
+|---|---|---|
+| Web framework | FastAPI | 0.135 |
+| ASGI server | uvicorn | 0.42 |
+| Data validation | Pydantic | 2.x |
+| Ping | ping3 | 5.1 |
+| Speed test | speedtest-cli | 2.1 |
+| DNS | dnspython | 2.8 |
+
+---
+
+## Performance
+
+| Metric | Value |
+|---|---|
+| Monitoring interval | 10 s |
+| Speed test interval | 10 min (background) |
+| Events per hour | ~360–400 |
+| Log size per hour | ~200–300 KB |
+| CPU usage | ~1–2 % (idle between checks) |
+| Memory | ~50–100 MB |
 
 ---
 
 ## Troubleshooting
 
-### "Permission denied" on Linux/macOS
+**Port 8000 already in use**
 
-Run with `sudo` for ping capability:
+Edit `run.py` and change the port number:
+```python
+uvicorn.run(..., port=8001)
+```
 
+**`Permission denied` on Linux / macOS**
+
+ICMP ping requires elevated privileges on some systems:
 ```bash
 sudo python3 run.py
 ```
 
-### Speed test is slow
+**WiFi signal shows N/A**
 
-- Speed tests take 30-60 seconds by design (accurate measurement)
-- They run every 10 minutes in background
-- Does not block other checks (ping/DNS run every 10s)
-- Can be disabled by modifying `monitor.py`
+Expected on Ethernet-only machines. On Linux, ensure `nmcli` or `iwconfig` is available.
 
-### Port 8000 already in use
+**Speed test is slow / times out**
 
-Edit `run.py` and change port:
-
-```python
-uvicorn.run(..., port=8001)  # or any unused port
-```
-
-### WiFi signal shows "N/A"
-
-- Normal on Ethernet-only machines
-- Linux may require `wmctrl` or `nmcli` package
-- Windows uses native `netsh` command
-
-### No internet = all pings fail
-
-- This is expected and logged correctly
-- Good for testing when disconnected intentionally
-- Check event log to see failure reasons
+Speed tests run for 30–60 s by design to produce accurate results. They run in the background and do not block ping or DNS checks.
 
 ---
 
-## API Endpoints
+## Security & privacy
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Serve web UI |
-| `/api/start` | GET | Start monitoring |
-| `/api/stop` | GET | Stop monitoring |
-| `/api/status` | GET | Current status |
-| `/api/history` | GET | Event history (limit param) |
-| `/api/stats` | GET | Aggregated statistics |
-| `/api/events` | GET | EventSource (SSE) stream |
-| `/api/export` | POST | Export CSV/JSON |
-| `/api/logs` | DELETE | Clear all logs |
-
----
-
-## Performance & Specs
-
-- **Monitoring Interval**: 10 seconds (ping, DNS, WiFi)
-- **Speed Test Interval**: 10 minutes (background)
-- **Typical Duration**: ~1 hour baseline test
-- **Events per Hour**: ~360-400 (six per cycle × 60 cycles)
-- **JSON Log Size**: ~200-300 KB for 1-hour session
-- **CPU Impact**: Minimal (~1-2% idle between checks)
-- **Memory**: ~50-100 MB process size
-
----
-
-## Security Notes
-
-✅ **What's NOT logged:**
-
-- URLs you visit
-- Passwords or tokens
-- Private communication content
-- Personally identifiable information (PII)
-
-✅ **What IS logged:**
-
-- Connectivity state (online/offline)
-- Latency to public DNS servers
-- DNS resolution results
-- WiFi signal strength (technical metric)
-- Download/upload speeds (technical metrics)
-
-✅ **All data is LOCAL:**
-
-- Nothing uploaded to cloud
-- Nothing stored externally
-- You control deletion & archival
-- Fully auditable source code
-
----
-
-## Limitations
-
-- Local-only (not accessible from other machines by default)
-- No authentication (assumes trusted environment)
-- Speed tests require internet connectivity
-- WiFi signal accuracy varies by platform
-- Single-machine monitoring (no multi-device sync)
-
----
-
-## Future Enhancements (v2)
-
-- [ ] Historical graph comparison
-- [ ] Email/Slack alerts
-- [ ] Custom test targets
-- [ ] HTTPS with self-signed cert
-- [ ] Network interface selection
-- [ ] Mobile app
-- [ ] Database storage option
+- Binds to `127.0.0.1` only — not accessible over the network.
+- No data is sent to any external service.
+- No analytics, telemetry, or tracking of any kind.
+- Logs contain only technical network metrics (latency, signal strength, throughput) — no URLs, credentials, or personal data.
+- Source code is fully auditable.
 
 ---
 
 ## License
 
-Open source. Free to use and modify for personal use.
-
----
-
-## Support
-
-For issues or questions:
-
-1. Check event logs in `./logs/`
-2. Review browser console (F12 → Console tab)
-3. Check terminal output when running `run.py`
-
----
-
-**Happy monitoring! 🔗**
-# netcheck
+MIT
